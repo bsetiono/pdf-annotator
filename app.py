@@ -2,22 +2,20 @@ import streamlit as st
 import pdfplumber
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
-from sumy.summarizers.lsa import LsaSummarizer  # Anda bisa ganti dengan LexRankSummarizer
+from sumy.summarizers.lsa import LsaSummarizer
 
-# Konfigurasi halaman Streamlit
+# Setup halaman
 st.set_page_config(page_title="PDF Annotator for SLR", layout="wide")
-
-# Judul dan deskripsi
-st.title("📄 PDF Annotator for SLR")
-st.markdown("Upload a PDF file, read its content, and add annotations based on the research template.")
+st.title("📄 PDF Annotator for Systematic Literature Review (SLR)")
+st.markdown("Upload a PDF file, extract the text, and generate annotation suggestions automatically in English.")
 
 # Template anotasi
-ANOTASI_TEMPLATE = {
-    "🌟 Temuan utama": "",
-    "🧪 Metode penelitian": "",
-    "📊 Data penting": "",
-    "📌 Kutipan kunci": "",
-    "❗ Kritik/kekurangan": ""
+anotasi_template = {
+    "🌟 Main Findings": "",
+    "🧪 Research Method": "",
+    "📊 Key Data": "",
+    "📌 Important Quote": "",
+    "❗ Weaknesses / Critique": ""
 }
 
 # Fungsi ringkasan
@@ -28,28 +26,32 @@ def summarize_text(text, num_sentences=5):
     return " ".join(str(sentence) for sentence in summary)
 
 # Upload file
-uploaded_file = st.file_uploader("Upload your PDF file here", type="pdf")
+uploaded_file = st.file_uploader("📤 Upload PDF file", type=["pdf"])
 
 if uploaded_file:
-    all_text = ""
+    full_text = ""
     with pdfplumber.open(uploaded_file) as pdf:
         for page in pdf.pages:
-            page_text = page.extract_text()
-            if page_text:
-                all_text += page_text + "\n"
+            text = page.extract_text()
+            if text:
+                full_text += text + "\n"
 
-    if all_text.strip() == "":
-        st.warning("⚠️ Tidak ada teks yang berhasil diekstrak dari file PDF.")
+    if not full_text.strip():
+        st.warning("⚠️ No extractable text found in the PDF.")
     else:
-        st.subheader("📃 Extracted Text")
-        st.text_area("PDF Text Content", all_text, height=300)
+        st.subheader("📃 Full Extracted Text")
+        st.text_area("PDF Text Content", full_text, height=300)
 
-        if st.button("🛠 Generate Annotation Draft"):
-            summary = summarize_text(all_text)
+        if st.button("🔍 Generate Annotation Draft"):
+            with st.spinner("Generating summary..."):
+                summary = summarize_text(full_text)
 
-            ANOTASI_TEMPLATE["🌟 Temuan utama"] = summary
-            ANOTASI_TEMPLATE["📌 Kutipan kunci"] = summary.split(".")[0] + "..."  # Ambil kalimat pertama
+                # Isi otomatis
+                anotasi_template["🌟 Main Findings"] = summary
+                anotasi_template["📌 Important Quote"] = summary.split(".")[0] + "..."
 
+            st.success("✅ Draft annotation generated successfully!")
             st.subheader("📝 Annotation Draft")
-            for key, value in ANOTASI_TEMPLATE.items():
-                st.text_area(label=key, value=value, key=key)
+
+            for key, value in anotasi_template.items():
+                st.text_area(key, value=value, key=key)
