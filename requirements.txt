@@ -3,8 +3,7 @@ pdfplumber
 pdf2image
 pytesseract
 openai
-transformers
-torch
 sumy
+
 
 
