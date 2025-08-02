@@ -1,51 +1,55 @@
 import streamlit as st
 import pdfplumber
+from transformers import pipeline
 import tempfile
+import os
 
-st.set_page_config(page_title="📄 PDF Annotator", layout="wide")
-
-st.title("📄 PDF Annotator for SLR")
-st.markdown("Upload a PDF file, read its content, and add annotations based on the research template.")
-
-default_annotation = {
-    "🌟 Key Findings": "",
+# Template anotasi
+ANNOTATION_TEMPLATE = {
+    "🌟 Main Findings": "",
     "🧪 Research Method": "",
-    "📊 Important Data": "",
+    "📊 Key Data": "",
     "📌 Key Quotes": "",
-    "❗ Criticism or Limitations": ""
+    "❗Criticism/Weaknesses": ""
 }
 
-# Upload file
+# Streamlit app
+st.set_page_config(page_title="PDF Annotator for SLR", layout="wide")
+st.title("📄 PDF Annotator for SLR")
+
 uploaded_file = st.file_uploader("Upload your PDF file here", type=["pdf"])
 
 if uploaded_file:
-    st.success("✅ File uploaded successfully!")
-
-    # Save to temporary file
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
         tmp_file.write(uploaded_file.read())
         tmp_path = tmp_file.name
 
-    # Read PDF text
-    full_text = ""
-    try:
-        with pdfplumber.open(tmp_path) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text()
-                if text:
-                    full_text += text + "\n"
-    except Exception as e:
-        st.error(f"❌ Error reading PDF: {e}")
+    st.success("✅ File uploaded successfully.")
 
-    # Show extracted text
-    st.subheader("📖 Extracted Text")
-    st.text_area("PDF Content", full_text, height=300)
+    # Extract text from PDF
+    all_text = ""
+    with pdfplumber.open(tmp_path) as pdf:
+        for page in pdf.pages:
+            all_text += page.extract_text() or ""
 
-    # Annotation template
-    st.subheader("📝 Add Your Annotations")
-    annotations = {}
-    for section in default_annotation:
-        annotations[section] = st.text_area(section, default_annotation[section])
+    if all_text.strip() == "":
+        st.warning("⚠ No text found in the PDF.")
+    else:
+        # Summarize with transformers
+        st.subheader("🧠 AI-generated Summary")
+        with st.spinner("Generating summary..."):
+            summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+            # Transformer has max token limit — split if needed
+            chunks = [all_text[i:i+1000] for i in range(0, len(all_text), 1000)]
+            summaries = [summarizer(chunk, max_length=100, min_length=30, do_sample=False)[0]['summary_text'] for chunk in chunks[:3]]  # Max 3 chunks
+            full_summary = " ".join(summaries)
+            st.write(full_summary)
 
-    if st.button("💾 Save Annotations"):
-        st.success("Annotations saved (simulation only).")
+        # Annotation input
+        st.subheader("📝 Add your annotations")
+        annotations = {}
+        for key in ANNOTATION_TEMPLATE:
+            annotations[key] = st.text_area(key, value=ANNOTATION_TEMPLATE[key])
+
+        if st.button("Save annotations"):
+            st.success("✅ Annotations saved (feature to download coming soon).")
