@@ -7,7 +7,7 @@ from sumy.summarizers.lsa import LsaSummarizer
 # Setup halaman
 st.set_page_config(page_title="PDF Annotator for SLR", layout="wide")
 st.title("📄 PDF Annotator for Systematic Literature Review (SLR)")
-st.markdown("Upload a PDF file, extract the text, and generate annotation suggestions automatically in English.")
+st.markdown("Upload a PDF file, and this app will automatically generate annotations in English.")
 
 # Template anotasi
 anotasi_template = {
@@ -39,14 +39,10 @@ if uploaded_file:
     if not full_text.strip():
         st.warning("⚠️ No extractable text found in the PDF.")
     else:
-        st.subheader("📃 Full Extracted Text")
-        st.text_area("PDF Text Content", full_text, height=300)
-
         if st.button("🔍 Generate Annotation Draft"):
             with st.spinner("Generating summary..."):
                 summary = summarize_text(full_text)
 
-                # Isi otomatis
                 anotasi_template["🌟 Main Findings"] = summary
                 anotasi_template["📌 Important Quote"] = summary.split(".")[0] + "..."
 
